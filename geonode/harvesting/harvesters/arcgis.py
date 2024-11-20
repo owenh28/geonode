@@ -129,6 +129,53 @@ class ArcgisServiceResourceExtractor(abc.ABC):
             result = True
         return result
 
+class ArcgisFeatureServiceResourceExtractor(ArcgisServiceResourceExtractor):
+    service: arcrest.FeatureService
+    http_session: requests.Session
+    _cached_resources: typing.Optional[typing.List[base.BriefRemoteResource]]
+
+    def __init__(self, service: arcrest.FeatureService):
+        super().__init__(service)
+        self.http_session = requests.Session()
+        self._cached_resources = None
+
+    def get_num_resources(self) -> int:
+        if self._cached_resources is None:
+            self._cached_resources = self._extract_resources()
+        return len(self._cached_resources)
+
+    def list_resources(
+            self,
+    ) -> typing.List[base.BriefRemoteResource]:
+        if self._cached_resources is None:
+            self._cached_resources = self._extract_resources()
+        return self._cached_resources
+
+    def _extract_resources(self) -> typing.List[base.BriefRemoteResource]:
+        result = []
+        try:
+            for arc_layer in self.service.layers:
+                if (
+                    self._is_relevant_layer(arc_layer.name)
+                    and arc_layer.type != ArcgisRestApiLayerType.GROUP_LAYER.value
+                ):
+                    result.append(self._parse_brief_layer(arc_layer))
+                result.extend(self._list_sub_layers(arc_layer))
+        except HTTPError:
+            logger.exception(msg="Could not list resources")
+        return result
+
+    def _list_sub_layers(self, arc_layer: arcrest.MapLayer) -> typing.List[base.BriefRemoteResource]:
+        result = []
+        for sub_layer in arc_layer.subLayers:
+            if self._is_relevant_layer(arc_layer.name) and arc_layer.type != ArcgisRestApiLayerType.GROUP_LAYER.value:
+                result.append(self._parse_brief_layer(sub_layer))
+            result.extend(self._list_sub_layers(sub_layer))
+        return result
+
+
+
+
 
 class ArcgisMapServiceResourceExtractor(ArcgisServiceResourceExtractor):
     service: arcrest.MapService
