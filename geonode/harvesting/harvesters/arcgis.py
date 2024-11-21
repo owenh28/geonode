@@ -151,6 +151,26 @@ class ArcgisFeatureServiceResourceExtractor(ArcgisServiceResourceExtractor):
             self._cached_resources = self._extract_resources()
         return self._cached_resources
 
+    def get_resource(self, harvestable_resource: models.HarvestableResource):
+        response = self.http_session.get(harvestable_resource.unique_identifier, params={"f": "json"})
+        result = None
+        if response.status_code == requests.codes.ok:
+            try:
+                response_payload = response.json()
+            except json.JSONDecodeError:
+                logger.exception("Could not decode response payload as valid JSON")
+            else:
+                resource_descriptor = self._get_resource_descriptor(response_payload, harvestable_resource)
+                result = base.HarvestedResourceInfo(
+                    resource_descriptor=resource_descriptor, additional_information=None
+                )
+        else:
+            logger.error(
+                f"Could not retrieve remote resource with unique "
+                f"identifier {harvestable_resource.unique_identifier!r}"
+            )
+        return result
+
     def _extract_resources(self) -> typing.List[base.BriefRemoteResource]:
         result = []
         try:
@@ -165,13 +185,64 @@ class ArcgisFeatureServiceResourceExtractor(ArcgisServiceResourceExtractor):
             logger.exception(msg="Could not list resources")
         return result
 
-    def _list_sub_layers(self, arc_layer: arcrest.MapLayer) -> typing.List[base.BriefRemoteResource]:
+    def _list_sub_layers(self, arc_layer: arcrest.FeatureLayer) -> typing.List[base.BriefRemoteResource]:
         result = []
         for sub_layer in arc_layer.subLayers:
             if self._is_relevant_layer(arc_layer.name) and arc_layer.type != ArcgisRestApiLayerType.GROUP_LAYER.value:
                 result.append(self._parse_brief_layer(sub_layer))
             result.extend(self._list_sub_layers(sub_layer))
         return result
+
+    def _get_resource_descriptor(
+        self, layer_representation: typing.Dict, harvestable_resource: models.HarvestableResource
+    ) -> resourcedescriptor.RecordDescription:
+        if harvestable_resource.geonode_resource is None:
+            resource_uuid = uuid.uuid4()
+        else:
+            resource_uuid = uuid.UUID(harvestable_resource.geonode_resource.uuid)
+        _, service_name, service_type = parse_remote_url(harvestable_resource.unique_identifier)
+        epsg_code, spatial_extent = _parse_spatial_extent(layer_representation["extent"])
+        ows_url = harvestable_resource.harvester.remote_url
+        store = slugify(ows_url)
+        name = layer_representation.get("id", layer_representation.get("name", "Undefined"))
+        title = layer_representation.get("name", layer_representation.get("title", "Undefined"))
+        workspace = "remoteWorkspace"
+        alternate = f"{workspace}:{name}"
+        return resourcedescriptor.RecordDescription(
+            uuid=resource_uuid,
+            identification=resourcedescriptor.RecordIdentification(
+                name=name,
+                title=title,
+                abstract=layer_representation.get("description", ""),
+                other_constraints=layer_representation.get("copyrightTest", ""),
+                spatial_extent=spatial_extent,
+                other_keywords=[
+                    "ESRI",
+                    f"ArcGIS REST {self.service.__service_type__}",
+                ],
+            ),
+            distribution=resourcedescriptor.RecordDistribution(
+                link_url=harvestable_resource.unique_identifier,
+                thumbnail_url=None,
+            ),
+            reference_systems=[epsg_code],
+            additional_parameters={
+                "store": store,
+                "workspace": workspace,
+                "alternate": alternate,
+                "ows_url": ows_url,
+                "ptype": GXP_PTYPES["REST_FEATURE"],
+            },
+        )
+    def _parse_brief_layer(self, arc_layer: arcrest.FeatureLayer) -> base.BriefRemoteResource:
+        base_url = urllib.parse.urlparse(self.service.url)
+        layer_path = "/".join((base_url.path.rstrip("/"), str(arc_layer.id)))
+        layer_url = urllib.parse.urlunparse((base_url.scheme, base_url.netloc, layer_path, "", "", ""))
+        return base.BriefRemoteResource(
+            unique_identifier=layer_url,
+            title=arc_layer.name,
+            resource_type=arc_layer.type,
+        )
 
 
 
@@ -396,6 +467,8 @@ def get_resource_extractor(resource_unique_identifier: str) -> typing.Optional[A
     elif service_type == ArcgisServiceType.IMAGE_SERVICE:
         service = arcrest.ImageService(resource_unique_identifier)
         result = ArcgisImageServiceResourceExtractor(service)
+    elif service_type == ArcgisServiceType.FEATURE_SERVICE:
+        result = arcrest.FeatureService(resource_unique_identifier)
     else:
         logger.error(f"Unsupported ArcGIS REST service {service_type!r}")
         result = None
@@ -405,17 +478,19 @@ def get_resource_extractor(resource_unique_identifier: str) -> typing.Optional[A
 class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
     harvest_map_services: bool
     harvest_image_services: bool
+    harvest_feature_services: bool
     resource_name_filter: typing.Optional[str]
     service_names_filter: typing.Optional[typing.List[str]]
 
     http_session: requests.Session
     _arc_catalog: typing.Optional[arcrest.Catalog]
     _relevant_service_extractors: typing.Optional[
-        typing.List[typing.Union[ArcgisMapServiceResourceExtractor, ArcgisImageServiceResourceExtractor]]
+        typing.List[typing.Union[ArcgisMapServiceResourceExtractor, ArcgisImageServiceResourceExtractor, ArcgisFeatureServiceResourceExtractor]]
     ]
     _supported_service_types = {
         ArcgisServiceType.MAP_SERVICE: ArcgisMapServiceResourceExtractor,
         ArcgisServiceType.IMAGE_SERVICE: ArcgisImageServiceResourceExtractor,
+        ArcgisServiceType.FEATURE_SERVICE: ArcgisFeatureServiceResourceExtractor
     }
 
     def __init__(
@@ -424,6 +499,7 @@ class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
         harvester_id: int,
         harvest_map_services: bool = True,
         harvest_image_services: bool = True,
+        harvest_feature_services: bool = True,
         resource_name_filter: typing.Optional[str] = True,
         service_names_filter: typing.Optional[typing.List[str]] = None,
     ) -> None:
@@ -431,16 +507,19 @@ class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
         if service_name is not None:
             names_filter = [service_name] + (service_names_filter or [])
             service_type = ArcgisServiceType(service_type_name)
+            harvest_features = (service_type == ArcgisServiceType.FEATURE_SERVICE) or harvest_feature_services
             harvest_maps = (service_type == ArcgisServiceType.MAP_SERVICE) or harvest_map_services
             harvest_images = (service_type == ArcgisServiceType.IMAGE_SERVICE) or harvest_image_services
         else:
             names_filter = service_names_filter or []
             harvest_maps = harvest_map_services
             harvest_images = harvest_image_services
+            harvest_features = harvest_feature_services
         super().__init__(catalog_url, harvester_id)
         self.http_session = requests.Session()
         self.harvest_map_services = harvest_maps
         self.harvest_image_services = harvest_images
+        self.harvest_features = harvest_features
         self.resource_name_filter = resource_name_filter
         self.service_names_filter = names_filter
         self._arc_catalog = None
@@ -466,6 +545,7 @@ class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
             harvester_id=harvester.pk,
             harvest_map_services=harvester.harvester_type_specific_configuration.get("harvest_map_services", True),
             harvest_image_services=harvester.harvester_type_specific_configuration.get("harvest_image_services", True),
+            harvest_feature_services=harvester.harvester_type_specific_configuration.get("harvest_feature_services",True),
             resource_name_filter=harvester.harvester_type_specific_configuration.get("resource_name_filter"),
             service_names_filter=harvester.harvester_type_specific_configuration.get("service_names_filter"),
         )
@@ -484,6 +564,7 @@ class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
             "properties": {
                 "harvest_map_services": {"type": "boolean", "default": True},
                 "harvest_image_services": {"type": "boolean", "default": True},
+                "harvest_feature_services": {"type": "boolean", "default": True},
                 "resource_name_filter": {
                     "type": "string",
                 },
@@ -544,6 +625,8 @@ class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
             result = ArcgisMapServiceResourceExtractor
         elif service_type == ArcgisServiceType.IMAGE_SERVICE and self.harvest_image_services:
             result = ArcgisImageServiceResourceExtractor
+        elif service_type == ArcgisServiceType.FEATURE_SERVICE and self.harvest_feature_services:
+            result = ArcgisFeatureServiceResourceExtractor
         else:
             result = None
         return result
@@ -588,7 +671,7 @@ class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
 
     def _get_relevant_services(
         self,
-    ) -> typing.List[typing.Union[ArcgisMapServiceResourceExtractor, ArcgisImageServiceResourceExtractor]]:
+    ) -> typing.List[typing.Union[ArcgisMapServiceResourceExtractor, ArcgisImageServiceResourceExtractor, ArcgisFeatureServiceResourceExtractor]]:
         if self._relevant_service_extractors is None:
             result = []
             relevant_service_names = self.service_names_filter or self.arc_catalog.servicenames

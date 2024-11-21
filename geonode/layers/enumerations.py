@@ -43,6 +43,7 @@ GXP_PTYPES = {
     "WCS": "gxp_wmscsource",
     "REST_MAP": "gxp_arcrestsource",
     "REST_IMG": "gxp_arcrestsource",
+    "REST_FEATURE": "gxp_arcrestsource",
     "HGL": "gxp_hglsource",
     "GN_WMS": "gxp_wmscsource",
     "SOS": "gxp_sos",
