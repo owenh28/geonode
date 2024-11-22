@@ -41,7 +41,7 @@ logger = logging.getLogger("geonode.services")
 class Service(ResourceBase):
     """Service Class to represent remote Geo Web Services"""
 
-    type = models.CharField(max_length=10, choices=service_type_as_tuple)
+    type = models.CharField(max_length=12, choices=service_type_as_tuple)
     method = models.CharField(
         max_length=1,
         choices=(

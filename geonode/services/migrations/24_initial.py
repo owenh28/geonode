@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
                 ('type', models.CharField(max_length=4, choices=[('AUTO', 'Auto-detect'), ('OWS', 'Paired WMS/WFS/WCS'), ('WMS', 'Web Map Service'), ('CSW', 'Catalogue Service'), ('REST', 'ArcGIS REST Service'), ('OGP', 'OpenGeoPortal'), ('HGL', 'Harvard Geospatial Library')])),
                 ('method', models.CharField(max_length=1, choices=[('L', 'Local'), ('C', 'Cascaded'), ('H', 'Harvested'), ('I', 'Indexed'), ('X', 'Live'), ('O', 'OpenGeoPortal')])),
                 ('base_url', models.URLField(unique=True, db_index=True)),
-                ('version', models.CharField(max_length=10, null=True, blank=True)),
+                ('version', models.CharField(max_length=12, null=True, blank=True)),
                 ('name', models.CharField(unique=True, max_length=255, db_index=True)),
                 ('description', models.CharField(max_length=255, null=True, blank=True)),
                 ('online_resource', models.URLField(null=True, verbose_name=False, blank=True)),
@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
             name='WebServiceHarvestLayersJob',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('status', models.CharField(default='pending', max_length=10, choices=[('pending','pending'), ('failed','failed'), ('process','process')])),
+                ('status', models.CharField(default='pending', max_length=12, choices=[('pending','pending'), ('failed','failed'), ('process','process')])),
                 ('service', models.OneToOneField(to='services.Service', on_delete=models.CASCADE)),
             ],
         ),
@@ -80,7 +80,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('base_url', models.URLField(unique=True)),
                 ('type', models.CharField(max_length=4, choices=[('AUTO', 'Auto-detect'), ('OWS', 'Paired WMS/WFS/WCS'), ('WMS', 'Web Map Service'), ('CSW', 'Catalogue Service'), ('REST', 'ArcGIS REST Service'), ('OGP', 'OpenGeoPortal'), ('HGL', 'Harvard Geospatial Library')])),
-                ('status', models.CharField(default='pending', max_length=10, choices=[('pending','pending'), ('failed','failed'), ('process','process')])),
+                ('status', models.CharField(default='pending', max_length=12, choices=[('pending','pending'), ('failed','failed'), ('process','process')])),
             ],
         ),
         migrations.AddField(
