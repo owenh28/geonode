@@ -25,6 +25,7 @@ TMS = "TMS"
 CSW = "CSW"
 REST_MAP = "REST_MAP"
 REST_IMG = "REST_IMG"
+REST_FEATURE = "REST_FEATURE"
 OGP = "OGP"
 HGL = "HGL"
 GN_WMS = "GN_WMS"
@@ -42,6 +43,7 @@ HARVESTER_TYPES = {
     "GN_WMS": "geonode.harvesting.harvesters.geonodeharvester.GeonodeUnifiedHarvesterWorker",
     "REST_MAP": "geonode.harvesting.harvesters.arcgis.ArcgisHarvesterWorker",
     "REST_IMG": "geonode.harvesting.harvesters.arcgis.ArcgisHarvesterWorker",
+    "REST_FEATURE": "geonode.harvesting.harvesters.arcgis.ArcgisHarvesterWorker",
 }
 
 QUEUED = "QUEUED"

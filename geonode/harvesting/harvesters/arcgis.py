@@ -545,7 +545,7 @@ class ArcgisHarvesterWorker(base.BaseHarvesterWorker):
             harvester_id=harvester.pk,
             harvest_map_services=harvester.harvester_type_specific_configuration.get("harvest_map_services", True),
             harvest_image_services=harvester.harvester_type_specific_configuration.get("harvest_image_services", True),
-            harvest_feature_services=harvester.harvester_type_specific_configuration.get("harvest_feature_services",True),
+            harvest_feature_services=harvester.harvester_type_specific_configuration.get("harvest_feature_services", True),
             resource_name_filter=harvester.harvester_type_specific_configuration.get("resource_name_filter"),
             service_names_filter=harvester.harvester_type_specific_configuration.get("service_names_filter"),
         )
