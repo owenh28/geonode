@@ -39,6 +39,8 @@ GEONODE_SERVICE_TYPES = {
     "https://wiki.osgeo.org/wiki/TMS": "OSGeo:TMS",
     "urn:x-esri:serviceType:ArcGIS:MapServer": "ESRI:ArcGIS:MapServer",
     "urn:x-esri:serviceType:ArcGIS:ImageServer": "ESRI:ArcGIS:ImageServer",
+    "urn:x-esri:serviceType:ArcGIS:FeatureServer": "ESRI:ArcGIS:FeatureServer",
+
 }
 
 

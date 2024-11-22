@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='service',
             name='type',
-            field=models.CharField(choices=[('OWS', 'Paired WMS/WFS/WCS'), ('WMS', 'Web Map Service'), ('REST_MAP', 'ArcGIS REST MapServer'), ('REST_IMG', 'ArcGIS REST ImageServer'), ('GN_WMS', 'GeoNode (Web Map Service)')], max_length=100),
+            field=models.CharField(choices=[('OWS', 'Paired WMS/WFS/WCS'), ('WMS', 'Web Map Service'), ('REST_MAP', 'ArcGIS REST MapServer'), ('REST_IMG', 'ArcGIS REST ImageServer'),('REST_FEATURE', 'ArcGIS REST FeatureServer'), ('GN_WMS', 'GeoNode (Web Map Service)')], max_length=100),
         ),
     ]

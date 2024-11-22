@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 def get_available_service_types():
     # LGTM: Fixes - Module uses member of cyclically imported module, which can lead to failure at import time.
     from geonode.services.serviceprocessors.wms import GeoNodeServiceHandler, WmsServiceHandler
-    from geonode.services.serviceprocessors.arcgis import ArcImageServiceHandler, ArcMapServiceHandler
+    from geonode.services.serviceprocessors.arcgis import ArcImageServiceHandler, ArcMapServiceHandler, ArcFeatureServiceHandler
 
     default = OrderedDict(
         {
@@ -48,6 +48,7 @@ def get_available_service_types():
                 "handler": ArcImageServiceHandler,
                 "label": _("ArcGIS REST ImageServer"),
             },
+            enumerations.REST_FEATURE: {"OWS": False, "handler": ArcFeatureServiceHandler, "label": _("ArcGIS REST FeatureServer")}
             # enumerations.CSW: {"OWS": False, "handler": ServiceHandlerBase, "label": _('Catalogue Service')},
             # enumerations.OGP: {"OWS": True, "handler": ServiceHandlerBase, "label": _('OpenGeoPortal')},  # TODO: verify this
             # enumerations.HGL: {"OWS": False, "handler": ServiceHandlerBase, "label": _('Harvard Geospatial Library')},  # TODO: verify this

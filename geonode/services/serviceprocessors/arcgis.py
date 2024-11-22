@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 #########################################################################
-"""Utilities for enabling ESRI:ArcGIS:MapServer and ESRI:ArcGIS:ImageServer remote services in geonode."""
+"""Utilities for enabling ESRI:ArcGIS:MapServer, ESRI:ArcGIS:FeatureServer and ESRI:ArcGIS:ImageServer remote services in geonode."""
 import os
 import logging
 import traceback
@@ -218,6 +218,7 @@ class ArcMapServiceHandler(base.ServiceHandlerBase):
         }
 
 class ArcFeatureServiceHandler(ArcMapServiceHandler):
+    """Remote service handler for ESRI:ArcGIS:FeatureServer services"""
     service_type = enumerations.REST_FEATURE
     def __init__(self, url, geonode_service_id=None):
         base.ServiceHandlerBase.__init__(self, url, geonode_service_id)

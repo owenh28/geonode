@@ -48,7 +48,7 @@ from geonode.services.utils import parse_services_types, test_resource_table_sta
 from . import enumerations, forms
 from .models import Service
 from .serviceprocessors import base, wms, arcgis, get_service_handler, get_available_service_types
-from .serviceprocessors.arcgis import ArcImageServiceHandler, ArcMapServiceHandler, MapLayer
+from .serviceprocessors.arcgis import ArcImageServiceHandler, ArcMapServiceHandler, MapLayer, ArcFeatureServiceHandler, FeatureLayer
 
 logger = logging.getLogger(__name__)
 
